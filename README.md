@@ -1,4 +1,4 @@
-# Các bước triển khai
+# 1. Các bước triển khai
 ## Task 1: Tải & tiền xử lý dữ liệu
 - Tải dữ liệu: Sử dụng datasets.load_dataset("lhoestq/conll2003") để lấy tập CoNLL-2003 chuẩn, gồm 3 split: train, validation, test.
 - Chuyển nhãn số sang string: Nhãn NER ban đầu là số, ánh xạ sang tên nhãn "B-PER", "I-PER", ...
@@ -17,7 +17,7 @@
 - Bi-LSTM:
   - 1 lớp, bidirectional, 128 hidden units.
   - Nhận chuỗi embedding và encode context trái/phải.
-- Linear layer: ánh xạ hidden state → số lượng nhãn.
+- Linear layer: ánh xạ hidden state -> số lượng nhãn.
 - Forward pass: output [batch, seq_len, num_classes] dùng cho CrossEntropyLoss.
 
 ## Task 4: Huấn luyện mô hình
@@ -27,24 +27,75 @@
   - model.train(), zero_grad()
   - Forward pass -> tính logits
   - Reshape logits & targets để phù hợp CrossEntropyLoss ([batch*seq_len, num_classes])
-  - Backward pass → optimizer.step()
+  - Backward pass -> optimizer.step()
 - Epochs: 3, in loss trung bình.
 
 ## Task 5: Đánh giá Mô hình
 - Hàm evaluate:
   - model.eval(), tắt gradient
-  - torch.argmax trên logits cuối cùng → nhãn dự đoán cho từng token
+  - torch.argmax trên logits cuối cùng -> nhãn dự đoán cho từng token
   - Bỏ padding token khi tính accuracy
   - Tính F1, precision, recall bằng seqeval
 - Hàm predict_sentence:
-  - Chuyển câu string sang indices, forward pass → argmax → cặp (word, predicted_tag)
+  - Chuyển câu string sang indices, forward pass -> argmax -> cặp (word, predicted_tag)
+
+# 2. Hướng dẫn chạy code
+- Chạy chương trình trong file sau để thấy kết quả
+```
+Lab_05/src/lab5_ner.ipynb
+```
+
+# 3. Phân tích kết quả
+## Hiệu năng trên tập Validation
+- Token-level Accuracy: 0.9332
+- Precision: 0.7534
+- Recall: 0.6082
+- F1-score: 0.6731
+- Nhận xét: Mô hình có thể nhận diện đúng thực thể quen thuộc hoặc xuất hiện nhiều trong tập huấn luyện, nhưng chưa bao quát được tất cả các tình huống phức tạp.
+
+## Hiệu năng trên tập Test
+- Token-level Accuracy: 0.9100
+- Precision: 0.6697
+- Recall: 0.4873
+- F1-score: 0.5641
+- Nhận xét: Mô hình hoạt động "tạm ổn", nhưng còn xa so với mô hình hiện đại (BERT-based thường đạt >0.90 F1).
+
+## Phân tích ví dụ dự đoán
+```
+[('VNU', 'B-ORG'), ('University', 'I-ORG'), ('is', 'O'), ('located', 'O'), ('in', 'O'), ('Hanoi', 'O')]
+```
+- Điểm đúng
+  - "VNU University" được nhận diện là một tổ chức (ORG). Đây là dự đoán hợp lý và phản ánh rằng mô hình nhận ra cấu trúc tên tổ chức.
+- Điểm sai
+  - "Hanoi" được dự đoán “O” -> nhưng đúng ra phải là B-LOC.
+- Nhận xét: Dữ liệu training không nhiều về Vietnam-related entities, nên “Hanoi” có thể chưa xuất hiện.
 
 
-- Độ chính xác trên tập validation: 
-• Ví dụ dự đoán câu mới:
+# 4. Khó khăn và giải pháp
+## Khó khăn 1
+- Thư viện datasets không còn hỗ trợ dataset như conll2003 nên không chạy được chương trình
+```
+datasets.load_dataset("conll2003")
+```
+- Sử dụng mirror của conll2003
+```
+dataset = load_dataset("lhoestq/conll2003")
+```
 
-3
+## Khó khăn 2
+- Dataset mirror đang dùng không còn lưu ner_tags dạng ClassLabel nữa nên không lấy ra được nhãn
+```
+dataset["train"].features["ner_tags"].feature.names
+```
+- Tự tạo danh sách nhãn
+```
+tag_names = ["O", "B-PER", "I-PER", "B-ORG", "I-ORG", "B-LOC", "I-LOC", "B-MISC", "I-MISC"]
+```
+# 5. Kết quả thực hiện
+- Độ chính xác trên tập validation: 0.9332
+- Độ chính xác trên tập test: 0.9100
+- Ví dụ dự đoán câu: "VNU University is located in Hanoi"
+  - [('VNU', 'B-ORG'), ('University', 'I-ORG'), ('is', 'O'), ('located', 'O'), ('in', 'O'), ('Hanoi', 'O')]
 
-– Câu: “VNU University is located in Hanoi”
-– Dự đoán: ...
+
 
